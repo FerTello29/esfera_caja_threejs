@@ -40,3 +40,58 @@ canvas {
     margin: 0;
     font-size: 0.9rem;
 }
+
+/* ---- Panel de controles ---- */
+.controls-panel {
+    position: fixed;
+    z-index: 1;
+    top: 20px;
+    right: 20px;
+    width: 260px;
+    padding: 16px 18px;
+    color: white;
+    background: rgba(5, 18, 36, 0.75);
+    border-left: 4px solid #22d3ee;
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+}
+
+.controls-panel h2 {
+    margin: 0 0 14px;
+    font-size: 1rem;
+    color: #bfe8ff;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.control-group {
+    margin-bottom: 14px;
+}
+
+.control-group:last-child {
+    margin-bottom: 0;
+}
+
+.control-group label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: #d9ecff;
+    margin-bottom: 6px;
+}
+
+.control-group .value {
+    font-family: "Courier New", monospace;
+    font-size: 0.8rem;
+    color: #22d3ee;
+    background: rgba(34, 211, 238, 0.12);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.control-group input[type="range"] {
+    width: 100%;
+    accent-color: #22d3ee;
+    cursor: pointer;
+}

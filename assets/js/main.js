@@ -61,6 +61,27 @@ scene.add(sphere);
 
 const velocity = new THREE.Vector3(0.035, 0.027, 0.041);
 
+// ================= PANEL DE CONTROLES =================
+// Cada slider ajusta la RAPIDEZ (magnitud) de un eje sin alterar
+// la dirección actual del rebote en ese eje.
+
+function bindSpeedSlider(inputId, valueId, axis) {
+    const input = document.getElementById(inputId);
+    const valueLabel = document.getElementById(valueId);
+
+    input.addEventListener('input', () => {
+        const speed = parseFloat(input.value);
+        valueLabel.textContent = speed.toFixed(3);
+
+        const currentSign = Math.sign(velocity[axis]) || 1;
+        velocity[axis] = currentSign * speed;
+    });
+}
+
+bindSpeedSlider('speed-x', 'speed-x-value', 'x');
+bindSpeedSlider('speed-y', 'speed-y-value', 'y');
+bindSpeedSlider('speed-z', 'speed-z-value', 'z');
+
 // ================= MARCAS DE IMPACTO =================
 // Cada marca es un anillo que aparece en el punto de contacto
 // y se desvanece poco a poco antes de desaparecer.

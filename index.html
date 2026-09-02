@@ -22,6 +22,32 @@
         <h1>Esfera rebotando en una caja de cristal</h1>
         <p>Three.js: movimiento 3D, vectores y colisiones con límites.</p>
     </header>
+
+    <aside class="controls-panel" id="controls-panel">
+        <h2>Controles</h2>
+
+        <div class="control-group">
+            <label for="speed-x">
+                Velocidad X <span class="value" id="speed-x-value">0.035</span>
+            </label>
+            <input type="range" id="speed-x" min="0" max="0.15" step="0.001" value="0.035">
+        </div>
+
+        <div class="control-group">
+            <label for="speed-y">
+                Velocidad Y <span class="value" id="speed-y-value">0.027</span>
+            </label>
+            <input type="range" id="speed-y" min="0" max="0.15" step="0.001" value="0.027">
+        </div>
+
+        <div class="control-group">
+            <label for="speed-z">
+                Velocidad Z <span class="value" id="speed-z-value">0.041</span>
+            </label>
+            <input type="range" id="speed-z" min="0" max="0.15" step="0.001" value="0.041">
+        </div>
+    </aside>
+
     <script type="module" src="./assets/js/main.js"></script>
 </body>
 
