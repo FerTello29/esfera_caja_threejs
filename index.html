@@ -18,6 +18,16 @@
 </head>
 
 <body>
+    <!-- Pantalla de entrada: habilita el audio (política de autoplay) y presenta la escena -->
+    <div class="start-overlay" id="start-overlay">
+        <div class="start-card">
+            <span class="start-eyebrow">Simulación 3D · Three.js</span>
+            <h1>La caja de cristal</h1>
+            <p>Esferas que colisionan sobre una alfombra tejida a mano con código, con sonido y luz reaccionando a cada impacto.</p>
+            <button id="start-button" type="button">Entrar a la escena</button>
+        </div>
+    </div>
+
     <header class="panel">
         <h1>Esferas rebotando en una caja de cristal</h1>
         <p>Three.js: movimiento 3D, vectores, colisiones y partículas.</p>
@@ -55,6 +65,19 @@
             </label>
             <input type="range" id="speed-z" min="0" max="0.15" step="0.001" value="0.041">
         </div>
+
+        <hr class="control-divider">
+
+        <div class="control-group sound-group">
+            <label for="volume">
+                Volumen <span class="value" id="volume-value">50%</span>
+            </label>
+            <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
+        </div>
+
+        <button id="mute-btn" class="mute-btn" type="button" aria-pressed="false">
+            <span id="mute-icon">🔊</span> Sonido activado
+        </button>
     </aside>
 
     <script type="module" src="./assets/js/main.js"></script>

@@ -1,8 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x07111f);
+scene.fog = new THREE.FogExp2(0x07111f, 0.018);
 
 const camera = new THREE.PerspectiveCamera(
     60,
@@ -16,17 +21,38 @@ camera.lookAt(0, 0, 0);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 // ---- Controles de cámara ----
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
+controls.minDistance = 6;
+controls.maxDistance = 30;
+controls.maxPolarAngle = Math.PI * 0.49; // no dejar que la cámara se meta bajo la alfombra
 
-scene.add(new THREE.AmbientLight(0xffffff, 1.4));
+// ---- Iluminación ----
+scene.add(new THREE.HemisphereLight(0xbfe8ff, 0x0a1a2c, 0.7));
+
 const light = new THREE.DirectionalLight(0xffffff, 3);
-light.position.set(5, 8, 6);
+light.position.set(5, 9, 6);
+light.castShadow = true;
+light.shadow.mapSize.set(2048, 2048);
+light.shadow.camera.left = -14;
+light.shadow.camera.right = 14;
+light.shadow.camera.top = 14;
+light.shadow.camera.bottom = -14;
+light.shadow.camera.near = 1;
+light.shadow.camera.far = 40;
+light.shadow.bias = -0.0015;
 scene.add(light);
+
+// Luz cálida y baja que "respira" desde el centro de la alfombra, para dar ambiente.
+const emberLight = new THREE.PointLight(0xffb703, 0, 14, 2);
+emberLight.position.set(0, -4.6, 0);
+scene.add(emberLight);
 
 const boxSize = 10;
 const radius = 0.5;
@@ -52,6 +78,314 @@ const edges = new THREE.LineSegments(
     new THREE.LineBasicMaterial({ color: 0xbfe8ff })
 );
 scene.add(edges);
+
+// ================= ALFOMBRA PROCEDURAL (sin imágenes externas) =================
+// Toda la textura se dibuja en un <canvas> en tiempo de ejecución y se sube a la
+// GPU como THREE.CanvasTexture: un mandala geométrico que combina los mismos
+// tonos que ya usa la interfaz (cian, celeste, ámbar) para que la alfombra se
+// sienta parte del mismo mundo que la caja de cristal.
+
+function createRugColorTexture() {
+    const size = 1024;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const backdrop = ctx.createRadialGradient(
+        size / 2, size / 2, 0,
+        size / 2, size / 2, size / 2
+    );
+    backdrop.addColorStop(0, '#0e2740');
+    backdrop.addColorStop(0.7, '#081729');
+    backdrop.addColorStop(1, '#050e1a');
+    ctx.fillStyle = backdrop;
+    ctx.fillRect(0, 0, size, size);
+
+    ctx.save();
+    ctx.translate(size / 2, size / 2);
+
+    const ringPalette = ['#22d3ee', '#bfe8ff', '#ffb703'];
+    for (let ring = 0; ring < 5; ring++) {
+        const r = 70 + ring * 85;
+        const petals = 14 + ring * 6;
+        const color = ringPalette[ring % ringPalette.length];
+
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = ring % 2 === 0 ? 3 : 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.globalAlpha = 0.65;
+        for (let p = 0; p < petals; p++) {
+            const angle = (p / petals) * Math.PI * 2;
+            const innerR = r - 22;
+            const outerR = r + 22;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(angle) * innerR, Math.sin(angle) * innerR);
+            ctx.lineTo(Math.cos(angle) * outerR, Math.sin(angle) * outerR);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(Math.cos(angle) * outerR, Math.sin(angle) * outerR, 4, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+    }
+
+    // Estrella central, como si fuera el corazón de la caja de cristal reflejado en el suelo.
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ffb703';
+    ctx.beginPath();
+    const spikes = 8;
+    const outerR = 46;
+    const innerR = 20;
+    for (let i = 0; i < spikes * 2; i++) {
+        const r = i % 2 === 0 ? outerR : innerR;
+        const angle = (i / (spikes * 2)) * Math.PI * 2;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+
+    // Marco tipo "borde de alfombra tejida".
+    ctx.strokeStyle = '#bfe8ff';
+    ctx.lineWidth = 16;
+    ctx.strokeRect(24, 24, size - 48, size - 48);
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(52, 52, size - 104, size - 104);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 8;
+    return texture;
+}
+
+function createRugRoughnessTexture() {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.createImageData(size, size);
+    for (let i = 0; i < imageData.data.length; i += 4) {
+        const shade = 150 + Math.random() * 90; // variación tipo "hilo" para que no se vea plano
+        imageData.data[i] = shade;
+        imageData.data[i + 1] = shade;
+        imageData.data[i + 2] = shade;
+        imageData.data[i + 3] = 255;
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
+    return texture;
+}
+
+const rugColorMap = createRugColorTexture();
+const rugRoughnessMap = createRugRoughnessTexture();
+
+const rugMaterial = new THREE.MeshStandardMaterial({
+    map: rugColorMap,
+    roughnessMap: rugRoughnessMap,
+    roughness: 1,
+    metalness: 0.04
+});
+const rug = new THREE.Mesh(new THREE.CircleGeometry(13, 96), rugMaterial);
+rug.rotation.x = -Math.PI / 2;
+rug.position.y = -half - 0.01;
+rug.receiveShadow = true;
+scene.add(rug);
+
+// Halo de luz suave bajo la caja, como si el cristal iluminara la alfombra.
+const haloMaterial = new THREE.MeshBasicMaterial({
+    color: 0x22d3ee,
+    transparent: true,
+    opacity: 0.12,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+});
+const halo = new THREE.Mesh(new THREE.CircleGeometry(8, 64), haloMaterial);
+halo.rotation.x = -Math.PI / 2;
+halo.position.y = -half + 0.01;
+scene.add(halo);
+
+// ================= CAMPO DE ESTRELLAS (ambientación) =================
+function createStarfield() {
+    const starCount = 900;
+    const positions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+        const r = THREE.MathUtils.randFloat(22, 55);
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(THREE.MathUtils.randFloatSpread(1.6));
+        positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        positions[i * 3 + 1] = Math.abs(r * Math.cos(phi)) * 0.6 + 2;
+        positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.PointsMaterial({
+        color: 0xbfe8ff,
+        size: 0.09,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false
+    });
+    return new THREE.Points(geometry, material);
+}
+const starfield = createStarfield();
+scene.add(starfield);
+
+// ================= SONIDO SINTETIZADO (Web Audio API, sin archivos) =================
+
+let audioCtx = null;
+let masterGain = null;
+let userVolume = 0.5;
+let isMuted = false;
+
+function ensureAudioContext() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0;
+
+    const compressor = audioCtx.createDynamicsCompressor();
+    masterGain.connect(compressor);
+    compressor.connect(audioCtx.destination);
+
+    // Aparición suave del volumen para que no "explote" al entrar.
+    masterGain.gain.linearRampToValueAtTime(
+        isMuted ? 0 : userVolume,
+        audioCtx.currentTime + 2
+    );
+
+    startAmbientPad();
+}
+
+function startAmbientPad() {
+    const frequencies = [55, 82.4, 110]; // acorde grave, tipo colchón atmosférico
+    frequencies.forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 500;
+
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0.05 - i * 0.012;
+
+        // LFO lento que mueve el filtro para que el fondo "respire".
+        const lfo = audioCtx.createOscillator();
+        lfo.frequency.value = 0.04 + i * 0.015;
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 120;
+        lfo.connect(lfoGain);
+        lfoGain.connect(filter.frequency);
+        lfo.start();
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+        osc.start();
+    });
+}
+
+function playWallPing(axis, intensity) {
+    if (!audioCtx) return;
+    const baseFrequencies = { x: 440, y: 554.37, z: 659.25 };
+    const freq = baseFrequencies[axis] * (0.85 + intensity * 0.6);
+
+    const osc = audioCtx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(freq * 0.55, 40), audioCtx.currentTime + 0.18);
+
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.22 * (0.4 + intensity), audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0008, audioCtx.currentTime + 0.22);
+
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.25);
+
+    // Pulso de luz cálida sincronizado con el impacto.
+    emberLight.intensity = Math.min(emberLight.intensity + intensity * 1.2, 3);
+}
+
+function playCollisionClack() {
+    if (!audioCtx) return;
+    const duration = 0.09;
+    const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1800;
+    filter.Q.value = 5;
+
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    noise.start();
+
+    emberLight.intensity = Math.min(emberLight.intensity + 1.4, 3.5);
+}
+
+// ---- Pantalla de entrada / activación de audio ----
+const startOverlay = document.getElementById('start-overlay');
+const startButton = document.getElementById('start-button');
+startButton.addEventListener('click', () => {
+    ensureAudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    startOverlay.classList.add('is-hidden');
+});
+
+// ---- Controles de sonido ----
+const volumeInput = document.getElementById('volume');
+const volumeValue = document.getElementById('volume-value');
+const muteBtn = document.getElementById('mute-btn');
+const muteIcon = document.getElementById('mute-icon');
+
+volumeInput.addEventListener('input', () => {
+    userVolume = parseFloat(volumeInput.value);
+    volumeValue.textContent = `${Math.round(userVolume * 100)}%`;
+    if (masterGain && !isMuted) {
+        masterGain.gain.linearRampToValueAtTime(userVolume, audioCtx.currentTime + 0.1);
+    }
+});
+
+muteBtn.addEventListener('click', () => {
+    isMuted = !isMuted;
+    muteBtn.setAttribute('aria-pressed', String(isMuted));
+    muteIcon.textContent = isMuted ? '🔇' : '🔊';
+    muteBtn.lastChild.textContent = isMuted ? ' Sonido silenciado' : ' Sonido activado';
+    if (masterGain) {
+        masterGain.gain.linearRampToValueAtTime(isMuted ? 0 : userVolume, audioCtx.currentTime + 0.1);
+    }
+});
 
 // ================= ESFERAS (múltiples) =================
 const MAX_SPHERES = 20;
@@ -88,6 +422,8 @@ function randomPositionInsideBox() {
 
 function spawnSphere() {
     const mesh = new THREE.Mesh(sphereGeometry, createSphereMaterial());
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
     // Intenta encontrar una posición sin encimarse con esferas existentes.
     let position = randomPositionInsideBox();
@@ -313,10 +649,24 @@ function resolveSphereCollisions() {
 
                 const contactPoint = a.mesh.position.clone().addScaledVector(normal, radius);
                 spawnExplosion(contactPoint);
+                playCollisionClack();
             }
         }
     }
 }
+
+// ================= POST-PROCESADO (bloom) =================
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    0.85, // intensidad
+    0.45, // radio
+    0.18  // umbral
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
 
 function animate() {
     spheres.forEach(({ mesh, velocity }) => {
@@ -330,6 +680,7 @@ function animate() {
                 new THREE.Vector3(sign * half, mesh.position.y, mesh.position.z),
                 new THREE.Vector3(sign, 0, 0)
             );
+            playWallPing('x', Math.min(Math.abs(velocity.x) / 0.15, 1));
         }
         if (mesh.position.y >= limit || mesh.position.y <= -limit) {
             velocity.y *= -1;
@@ -339,6 +690,7 @@ function animate() {
                 new THREE.Vector3(mesh.position.x, sign * half, mesh.position.z),
                 new THREE.Vector3(0, sign, 0)
             );
+            playWallPing('y', Math.min(Math.abs(velocity.y) / 0.15, 1));
         }
         if (mesh.position.z >= limit || mesh.position.z <= -limit) {
             velocity.z *= -1;
@@ -348,14 +700,22 @@ function animate() {
                 new THREE.Vector3(mesh.position.x, mesh.position.y, sign * half),
                 new THREE.Vector3(0, 0, sign)
             );
+            playWallPing('z', Math.min(Math.abs(velocity.z) / 0.15, 1));
         }
     });
 
     resolveSphereCollisions();
     updateImpactMarks();
     updateExplosions();
+
+    // El halo y la luz cálida se apagan lentamente entre impactos.
+    emberLight.intensity *= 0.9;
+    halo.material.opacity = 0.1 + Math.min(emberLight.intensity / 3, 1) * 0.15;
+
+    starfield.rotation.y += 0.0002;
+
     controls.update();
-    renderer.render(scene, camera);
+    composer.render();
 }
 
 renderer.setAnimationLoop(animate);
@@ -364,4 +724,6 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
+    bloomPass.setSize(window.innerWidth, window.innerHeight);
 });

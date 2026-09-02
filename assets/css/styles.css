@@ -103,3 +103,97 @@ canvas {
     accent-color: #22d3ee;
     cursor: pointer;
 }
+
+/* ---- Botón de silencio ---- */
+.mute-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 9px 10px;
+    font-size: 0.85rem;
+    color: #d9ecff;
+    background: rgba(34, 211, 238, 0.1);
+    border: 1px solid rgba(34, 211, 238, 0.4);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.mute-btn:hover {
+    background: rgba(34, 211, 238, 0.2);
+}
+
+.mute-btn[aria-pressed="true"] {
+    color: #7a8ba3;
+    border-color: rgba(122, 139, 163, 0.4);
+    background: rgba(122, 139, 163, 0.08);
+}
+
+/* ---- Pantalla de entrada ---- */
+.start-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(circle at 50% 35%, rgba(34, 211, 238, 0.18), transparent 55%),
+        #050e1a;
+    transition: opacity 0.8s ease;
+}
+
+.start-overlay.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.start-card {
+    max-width: 420px;
+    padding: 40px 36px;
+    text-align: center;
+    color: #eaf6ff;
+    background: rgba(7, 17, 31, 0.6);
+    border: 1px solid rgba(191, 232, 255, 0.18);
+    border-radius: 14px;
+    box-shadow: 0 0 60px rgba(34, 211, 238, 0.12);
+}
+
+.start-eyebrow {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: #22d3ee;
+    margin-bottom: 14px;
+}
+
+.start-card h1 {
+    margin: 0 0 12px;
+    font-size: 1.7rem;
+    color: #ffffff;
+}
+
+.start-card p {
+    margin: 0 0 26px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #b9cee2;
+}
+
+.start-card button {
+    padding: 12px 26px;
+    font-size: 0.95rem;
+    color: #052033;
+    background: #22d3ee;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 0 24px rgba(34, 211, 238, 0.45);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.start-card button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 32px rgba(34, 211, 238, 0.65);
+}
