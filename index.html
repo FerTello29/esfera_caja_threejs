@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Práctica 1.2 | Esfera rebotando en una caja de cristal</title>
+    <title>Práctica 1.2 | Esferas rebotando en una caja de cristal</title>
     <link rel="stylesheet" href="./assets/css/styles.css">
 
     <script type="importmap">
@@ -19,12 +19,21 @@
 
 <body>
     <header class="panel">
-        <h1>Esfera rebotando en una caja de cristal</h1>
-        <p>Three.js: movimiento 3D, vectores y colisiones con límites.</p>
+        <h1>Esferas rebotando en una caja de cristal</h1>
+        <p>Three.js: movimiento 3D, vectores, colisiones y partículas.</p>
     </header>
 
     <aside class="controls-panel" id="controls-panel">
         <h2>Controles</h2>
+
+        <div class="control-group">
+            <label for="sphere-count">
+                Número de esferas <span class="value" id="sphere-count-value">5</span>
+            </label>
+            <input type="range" id="sphere-count" min="1" max="20" step="1" value="5">
+        </div>
+
+        <hr class="control-divider">
 
         <div class="control-group">
             <label for="speed-x">
